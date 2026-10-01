@@ -1,69 +1,129 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+
+// 各モードの時間（秒）
+const FOCUS_TIME = 25 * 60; // 25分
+const SHORT_BREAK = 5 * 60; // 5分
+const LONG_BREAK = 30 * 60; // 30分
+
+type Mode = "focus" | "shortBreak" | "longBreak";
 
 export default function Home() {
+  const [mode, setMode] = useState<Mode>("focus");
+  const [secondsLeft, setSecondsLeft] = useState(FOCUS_TIME);
+  const [isRunning, setIsRunning] = useState(false);
+  const [completedSets, setCompletedSets] = useState(0);
+
+  // 終了予定時刻を保持する（正確な時間計算のため）
+  const endTimeRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!isRunning) return;
+
+    const timer = setInterval(() => {
+      if (endTimeRef.current === null) return;
+
+      const remaining = Math.round((endTimeRef.current - Date.now()) / 1000);
+
+      if (remaining <= 0) {
+        setIsRunning(false);
+        setSecondsLeft(0);
+        handleModeComplete();
+      } else {
+        setSecondsLeft(remaining);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isRunning]);
+
+  // 1つのモード（集中 or 休憩）が終わった時の処理
+  const handleModeComplete = () => {
+    if (mode === "focus") {
+      const newCompletedSets = completedSets + 1;
+      setCompletedSets(newCompletedSets);
+
+      if (newCompletedSets % 4 === 0) {
+        // 4セット終わったら長い休憩
+        switchMode("longBreak");
+      } else {
+        switchMode("shortBreak");
+      }
+    } else {
+      // 休憩が終わったら集中に戻る
+      switchMode("focus");
+    }
+  };
+
+  const switchMode = (newMode: Mode) => {
+    setMode(newMode);
+    const time =
+      newMode === "focus"
+        ? FOCUS_TIME
+        : newMode === "shortBreak"
+        ? SHORT_BREAK
+        : LONG_BREAK;
+    setSecondsLeft(time);
+  };
+
+  const start = () => {
+    endTimeRef.current = Date.now() + secondsLeft * 1000;
+    setIsRunning(true);
+  };
+
+  const pause = () => {
+    setIsRunning(false);
+  };
+
+  const reset = () => {
+    setIsRunning(false);
+    switchMode(mode);
+  };
+
+  // 秒数を "25:00" のような表示に変換
+  const formatTime = (totalSeconds: number) => {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
+  const modeLabel =
+    mode === "focus" ? "集中時間" : mode === "shortBreak" ? "小休憩" : "長い休憩";
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6">
+      <h1 className="text-2xl font-bold">{modeLabel}</h1>
+
+      <div className="text-7xl font-mono">{formatTime(secondsLeft)}</div>
+
+      <div className="flex gap-4">
+        {!isRunning ? (
+          <button
+            onClick={start}
+            className="px-6 py-2 bg-blue-500 text-white rounded-lg"
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            開始
+          </button>
+        ) : (
+          <button
+            onClick={pause}
+            className="px-6 py-2 bg-yellow-500 text-white rounded-lg"
           >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+            一時停止
+          </button>
+        )}
+        <button
+          onClick={reset}
+          className="px-6 py-2 bg-gray-400 text-white rounded-lg"
+        >
+          リセット
+        </button>
+      </div>
+
+      <p className="text-gray-600">完了セット数: {completedSets}</p>
+    </main>
   );
 }
