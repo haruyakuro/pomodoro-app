@@ -68,6 +68,79 @@ export default function Timer({
   const endTimeRef = useRef<number | null>(null);
   const supabase = createClient();
 
+  // ===== 音と通知 =====
+  const [soundOn, setSoundOn] = useState(true);
+  const soundOnRef = useRef(true); // タイマーの中から最新の設定を読むため
+  soundOnRef.current = soundOn;
+  const audioRef = useRef<AudioContext | null>(null);
+
+  // 前回の「通知音 ON/OFF」を思い出す
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("soundOn");
+      if (saved !== null) setSoundOn(saved === "1");
+    } catch {}
+  }, []);
+
+  // 音を鳴らす準備。ブラウザの決まりで、ボタンを押したときにしか準備できない
+  const prepareAudio = () => {
+    try {
+      if (!audioRef.current) {
+        const Ctx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext })
+            .webkitAudioContext;
+        audioRef.current = new Ctx();
+      }
+      audioRef.current.resume();
+    } catch {}
+  };
+
+  // チャイムを鳴らす。集中が終わったら上がる4音、休憩が終わったら下がる2音
+  const playChime = (kind: "focusEnd" | "breakEnd") => {
+    const ctx = audioRef.current;
+    if (!ctx) return;
+    const notes =
+      kind === "focusEnd" ? [523.25, 659.25, 783.99, 1046.5] : [783.99, 659.25];
+    const now = ctx.currentTime;
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const t = now + i * 0.22;
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.35, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 1);
+    });
+  };
+
+  // ブラウザの通知を出す（許可されていないときは何もしない）
+  const notify = (title: string, body: string) => {
+    if (typeof Notification === "undefined") return;
+    if (Notification.permission !== "granted") return;
+    try {
+      new Notification(title, { body });
+    } catch {}
+  };
+
+  const toggleSound = () => {
+    const next = !soundOn;
+    setSoundOn(next);
+    try {
+      localStorage.setItem("soundOn", next ? "1" : "0");
+    } catch {}
+    if (next) {
+      // ONにしたとき、どんな音か聞こえるように1回鳴らす
+      prepareAudio();
+      playChime("breakEnd");
+    }
+  };
+
   useEffect(() => {
     if (!isRunning) return;
 
@@ -109,13 +182,19 @@ export default function Timer({
     if (mode === "focus") {
       const newCompletedSets = completedSets + 1;
       setCompletedSets(newCompletedSets);
+      const isLong = newCompletedSets % 4 === 0;
 
-      if (newCompletedSets % 4 === 0) {
-        switchMode("longBreak");
-      } else {
-        switchMode("shortBreak");
-      }
+      if (soundOnRef.current) playChime("focusEnd");
+      notify(
+        "集中おつかれさま！",
+        isLong
+          ? "4セット完了！30分、ゆっくり休もう"
+          : `${newCompletedSets}セット完了。5分休憩しよう`
+      );
+      switchMode(isLong ? "longBreak" : "shortBreak");
     } else {
+      if (soundOnRef.current) playChime("breakEnd");
+      notify("休憩おわり", "次の集中を始めよう");
       switchMode("focus");
     }
   };
@@ -126,6 +205,11 @@ export default function Timer({
   };
 
   const start = () => {
+    prepareAudio();
+    // 通知の許可をまだ聞いていなければ、ここで聞く
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
     endTimeRef.current = Date.now() + secondsLeft * 1000;
     setIsRunning(true);
   };
@@ -183,6 +267,13 @@ export default function Timer({
     x: (150 + r * Math.cos(a)).toFixed(2),
     y: (150 + r * Math.sin(a)).toFixed(2),
   });
+
+  // ブラウザのタブに残り時間を表示（別のタブを見ていても分かる）
+  useEffect(() => {
+    document.title = isRunning
+      ? `${formatTime(secondsLeft)} ${isBreak ? "休憩" : "集中"} | Pomodoro`
+      : "Pomodoro";
+  }, [secondsLeft, isRunning, isBreak]);
 
   return (
     <main
@@ -413,6 +504,14 @@ export default function Timer({
           リセット
         </button>
       </div>
+
+      {/* 通知音のON/OFF */}
+      <button
+        onClick={toggleSound}
+        className="absolute bottom-12 left-1/2 -translate-x-1/2 rounded-full bg-white/70 px-3 py-1 text-xs text-[#0B2F6B]"
+      >
+        通知音: {soundOn ? "ON" : "OFF"}
+      </button>
 
       {/* 下の小さな表示 */}
       <p className="absolute inset-x-0 bottom-5 text-center text-xs text-white">
