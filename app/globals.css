@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -17,4 +18,71 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ===== 海のタイマー用：波と雲のアニメーション ===== */
+
+/* 波は「横に繰り返す画像」を横にずらし続けて動かしている */
+.wave {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background-repeat: repeat-x;
+  background-size: 195px 56px;
+}
+
+/* 奥の白い波（薄め・逆向きに流れる） */
+.wave-back {
+  top: 0;
+  opacity: 0.6;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='195' height='56' viewBox='0 0 195 56'%3E%3Cpath d='M0 24Q48.75 2 97.5 24T195 24V56H0Z' fill='%23fff'/%3E%3C/svg%3E");
+  animation: waveMove 11s linear infinite reverse;
+}
+
+/* 真ん中の白い波（泡の白い部分） */
+.wave-mid {
+  top: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='195' height='56' viewBox='0 0 195 56'%3E%3Cpath d='M0 28Q48.75 6 97.5 28T195 28V56H0Z' fill='%23fff'/%3E%3C/svg%3E");
+  animation: waveMove 7s linear infinite;
+}
+
+/* 手前の水色の波（少し下にずらして、白い帯を見せる） */
+.wave-front {
+  top: 14px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='195' height='56' viewBox='0 0 195 56'%3E%3Cpath d='M0 28Q48.75 6 97.5 28T195 28V56H0Z' fill='%233CD6F2'/%3E%3C/svg%3E");
+  animation: waveMove 9s linear infinite;
+  animation-delay: -4s;
+}
+
+@keyframes waveMove {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: 195px;
+  }
+}
+
+/* 雲のゆらゆら */
+.cloud-sway {
+  animation: cloudSway 12s ease-in-out infinite;
+}
+
+@keyframes cloudSway {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(26px);
+  }
+}
+
+/* 動きを減らす設定の人には、アニメーションを止める */
+@media (prefers-reduced-motion: reduce) {
+  .wave,
+  .cloud-sway {
+    animation: none;
+  }
 }
