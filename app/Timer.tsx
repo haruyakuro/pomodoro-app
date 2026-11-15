@@ -55,10 +55,10 @@ function Cloud({ shade, className }: { shade: string; className: string }) {
 
 export default function Timer({
   userId,
-  userEmail,
+  username,
 }: {
   userId: string;
-  userEmail: string;
+  username: string;
 }) {
   const [mode, setMode] = useState<Mode>("focus");
   const [secondsLeft, setSecondsLeft] = useState(FOCUS_TIME);
@@ -416,7 +416,10 @@ export default function Timer({
 
       {/* 下の小さな表示 */}
       <p className="absolute inset-x-0 bottom-5 text-center text-xs text-white">
-        {userEmail} ・ 完了セット数: {completedSets}
+        <Link href="/settings" className="underline">
+          {username}（名前を変更）
+        </Link>{" "}
+        ・ 完了セット数: {completedSets}
       </p>
     </main>
   );

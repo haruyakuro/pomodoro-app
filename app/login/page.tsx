@@ -66,6 +66,21 @@ export default async function LoginPage({
             className={inputClass}
           />
 
+          <label htmlFor="username" className="mt-2 pl-2 text-sm">
+            ユーザー名（新規登録のときだけ）
+          </label>
+          <input
+            name="username"
+            id="username"
+            type="text"
+            autoComplete="nickname"
+            maxLength={16}
+            className={inputClass}
+          />
+          <p className="pl-2 text-xs text-[#17407E]">
+            ランキングに表示されます（2〜16文字）。メールアドレスは公開されません
+          </p>
+
           <div className="mt-5 flex flex-col gap-3">
             <button
               formAction={login}
